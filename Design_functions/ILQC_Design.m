@@ -68,7 +68,13 @@ i  = 1;
 while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
      
     %% Problem 2.1.1: forward pass / "rollout" of the current policy
-    % sim_out = ...
+    % Forward-integration of the system dynamics (x_(n+1) = f_n) subject
+    % to initial condition x_0 and the current policy mu. This, obtain the
+    % nominal state- and control input trajectories u_n^i,x_n^i for n =
+    % 0,1,...,N
+    
+    %sim_out = ...
+    sim_out = Simulator(Model, Task, Controller);   % Take arguments directly from function call
     
     cost(i) = Calculate_Cost(sim_out, q_fun, qf_fun);
     fprintf('Cost of Iteration %2d (metric: ILQC cost function!): %6.4f \n', i-1, cost(i));
@@ -80,19 +86,22 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     end
     
     % define nominal state and control input trajectories
-    % X0 = ...
-    % U0 = ...
-    % T0 = ...
-    
+    X0 = sim_out.x;
+    U0 = sim_out.u;
+    T0 = sim_out.t;
 
       
     %% Problem 2.1.2: Solve Riccati-like equations backwards in time
     % Initialize the value function elements starting at final time step 
     % (Eq.(1.87)
     xf = X0(:,end); % final state when using current controller   
+
     % Sm(:,:,n_t) = ...
     % Sv(:,n_t)   = ...
     % s(n_t)      = ...
+    Sm(:,:,n_t) = Qmf_fun(xf);
+    Sv(:,n_t)   = Qvf_fun(xf);
+    s(n_t)      = qf_fun(xf);
     
     % "Backward pass": Calculate the coefficients (s,Sv,Sm) for the value 
     % functions at earlier times by proceeding backwards in time (DP-approach)
@@ -101,13 +110,17 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         % state of system at time step n
         x0 = X0(:,n);
         u0 = U0(:,n);
-              
+        
         % Discretize and linearize continuous system dynamics Alin around
         % specific pair (xO,uO). See exercise sheet Eq.(4) for details
+        
         % A = ...;
         % B = ...;
         
-
+        % x_(n+1) = (I+A_lin*dt)*x_n + (B_lin*dt)*u_n
+        A = Model.Alin{1}(x0, u0, Model_Param);
+        B = Model.Blin{1}(x0, u0, Model_Param);
+        
         % 2nd order approximation of cost function at time step n (Eq.(1.78))
         % q   = ...
         % Qv  = ...
@@ -115,11 +128,20 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         % Rv  = ...
         % Rm  = ...
         % Pm  = ...
+        q   = q_fun(n,x0,u0);       % L_n(x_n,u_n)
+        Qv  = Qv_fun(n, x0,u0);     % dL_n/dx
+        Qm  = Qm_fun(n, x0, u0);    % d^2L_n/d^2x
+        Rv  = Rv_fun(n, x0, u0);    % d_L/du
+        Rm  = Rm_fun(n, x0, u0);    % d^2L/d^2u
+        Pm  = Pm_fun(n, x0, u0);    % d^2L/(dxdu)
         
         % control dependent terms of cost function (Eq.(1.81)) 
         % g = ...                    % linear control dependent
         % G = ...                    % control and state dependent
-        % H = ...                    % quadratic control dependent
+        % H = ...                    % quadratic control dependent       
+        g =  Rv_fun(n, x0, u0) + B'*Sv(:,n+1);     % linear control dependent:      g_n = r_n + B_n'*s_(n+1)
+        G =  Pm_fun(n, x0, u0) + B'*Sm(:,:,n+1);    % control and state dependent:   G_n = P_n + B_n'S_(n+1)
+        H =  Rm_fun(n, x0, u0) + B'*Sm(:,:,n+1)*B;  % quadratic control dependent:   H_n = R_n + B_n'*S_(n+1)*B_n
         
         % ensuring H remains symmetric
         H = (H+H')/2; % important, do not delete!
@@ -127,12 +149,20 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         % the optimal change of the input trajectory du = duff + K*dx (Eq.(1.82)) 
         % duff(:,:,n) = ...
         % K(:,:,n)    = ...
+        duff(:,:,n) = -H\g;
+        K(:,:,n)    = -H\G;
                
         % Solve Riccati-like equations for current time step n (Eq.(1.84)
         % Sm(:,:,n) = ...
         % Sv(:,n) = ...
         % s(n) = ...
-              
+        
+        duff_transp = reshape(duff(:,:,n),size(duff(:,:,n),2), size(duff(:,:,n),1)); % duff transpose
+        
+        Sm(:,:,n)   = Qm + A'*Sm(:,:,n+1)*A + K(:,:,n)'*H*K(:,:,n) + K(:,:,n)'*G + G'*K(:,:,n);
+        Sv(:,n)     = Qv + A'*Sv(:,n+1) + K(:,:,n)'*H*duff(:,:,n) + K(:,:,n)'*g + G'*duff(:,:,n);
+        s(n)        = q + s(n+1) + 0.5*duff_transp*H*duff(:,:,n) + duff_transp*g;% q + s(n+1) + 0.5*duff(:,:,n)'*H*duff(:,:,n) + duff'*g;
+        
     end % of backward pass for solving Riccati equation
     
     % define theta_ff in this function

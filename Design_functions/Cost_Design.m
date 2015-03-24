@@ -4,7 +4,7 @@ function Cost = Cost_Design( m_quad, Task)
 %   .R_lqr
 %
 %   A ILQC cost J = h(x) + sum(l(x,u) is defined by:
-%   .h   - continuous time terminal cost
+%   .h - continuous time terminal cost
 %   .l - continous time intermediate cost
 
 % Quadcopter system state x
