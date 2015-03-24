@@ -197,9 +197,9 @@ function theta = Update_Controller(X0,U0,dUff,K)
 %  This must be brought into the form 
 %  U1 = theta' * [1,x']   
 
-
 % feedforward control input theta_ff = U0 + dUff - K*X0
 % theta_ff = ...
+theta_ff = U0 + dUff - K*X0;
 
 % feedback gain of control input
 theta_fb = permute(K,[2 1 3]);      

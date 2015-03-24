@@ -60,10 +60,11 @@ switch ilqc_type
         p1 = Task.vp1;      % p1 = Task.vp2 also try this one
         t1 = Task.vp_time;
         
-        % Define an approriate weighting for way points (see script Eq.(5))
+        % Define an approriate weighting for way points (see script or Eq.(5))
         % Hint: Which weightings must be zero for the algorithm to
         % determine optimal values?
         % Q_vp = ...
+        Q_vp = eye(3); % symmetric, zero on off-diagonals
         
         % don't penalize position deviations, drive system with final cost
         Cost.Qm(1:3,1:3) = zeros(3); 
@@ -71,6 +72,12 @@ switch ilqc_type
         % Define symbolic cost function. Use fnct "viapoint(.)" below
         % Cost.h = ...
         % Cost.l = ... + viapoint_cost
+        
+        Cost.h = simplify((x-x_goal)'*Cost.Qmf*(x-x_goal));
+        Cost.l = simplify( ...
+                (x-Cost.x_eq)'*Cost.Qm*(x-Cost.x_eq) ...
+                + (u-Cost.u_eq)'*Cost.Rm*(u-Cost.u_eq)... 
+                + (x-p1)'*Q_vp*(x-p1)*sqrt(rho/2*pi)*exp(-0.5*rho*t_sym-Task.goal_time) );
         
         
       otherwise
