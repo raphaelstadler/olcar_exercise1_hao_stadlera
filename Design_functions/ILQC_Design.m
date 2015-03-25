@@ -96,9 +96,6 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     % (Eq.(1.87)
     xf = X0(:,end); % final state when using current controller   
 
-    % Sm(:,:,n_t) = ...
-    % Sv(:,n_t)   = ...
-    % s(n_t)      = ...
     Sm(:,:,n_t) = Qmf_fun(xf);
     Sv(:,n_t)   = Qvf_fun(xf);
     s(n_t)      = qf_fun(xf);
@@ -114,20 +111,11 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         % Discretize and linearize continuous system dynamics Alin around
         % specific pair (xO,uO). See exercise sheet Eq.(4) for details
         
-        % A = ...;
-        % B = ...;
-        
         % x_(n+1) = (I+A_lin*dt)*x_n + (B_lin*dt)*u_n
         A = Model.Alin{1}(x0, u0, Model_Param);
         B = Model.Blin{1}(x0, u0, Model_Param);
         
         % 2nd order approximation of cost function at time step n (Eq.(1.78))
-        % q   = ...
-        % Qv  = ...
-        % Qm  = ...
-        % Rv  = ...
-        % Rm  = ...
-        % Pm  = ...
         q   = q_fun(n,x0,u0);       % L_n(x_n,u_n)
         Qv  = Qv_fun(n, x0,u0);     % dL_n/dx
         Qm  = Qm_fun(n, x0, u0);    % d^2L_n/d^2x
@@ -135,11 +123,8 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         Rm  = Rm_fun(n, x0, u0);    % d^2L/d^2u
         Pm  = Pm_fun(n, x0, u0);    % d^2L/(dxdu)
         
-        % control dependent terms of cost function (Eq.(1.81)) 
-        % g = ...                    % linear control dependent
-        % G = ...                    % control and state dependent
-        % H = ...                    % quadratic control dependent       
-        g =  Rv_fun(n, x0, u0) + B'*Sv(:,n+1);     % linear control dependent:      g_n = r_n + B_n'*s_(n+1)
+        % control dependent terms of cost function (Eq.(1.81))       
+        g =  Rv_fun(n, x0, u0) + B'*Sv(:,n+1);      % linear control dependent:      g_n = r_n + B_n'*s_(n+1)
         G =  Pm_fun(n, x0, u0) + B'*Sm(:,:,n+1);    % control and state dependent:   G_n = P_n + B_n'S_(n+1)
         H =  Rm_fun(n, x0, u0) + B'*Sm(:,:,n+1)*B;  % quadratic control dependent:   H_n = R_n + B_n'*S_(n+1)*B_n
         
@@ -147,21 +132,16 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         H = (H+H')/2; % important, do not delete!
              
         % the optimal change of the input trajectory du = duff + K*dx (Eq.(1.82)) 
-        % duff(:,:,n) = ...
-        % K(:,:,n)    = ...
         duff(:,:,n) = -H\g;
         K(:,:,n)    = -H\G;
                
-        % Solve Riccati-like equations for current time step n (Eq.(1.84)
-        % Sm(:,:,n) = ...
-        % Sv(:,n) = ...
-        % s(n) = ...
-        
+        % Solve Riccati-like equations for current time step n (Eq.(1.84)     
         duff_transp = reshape(duff(:,:,n),size(duff(:,:,n),2), size(duff(:,:,n),1)); % duff transpose
         
         Sm(:,:,n)   = Qm + A'*Sm(:,:,n+1)*A + K(:,:,n)'*H*K(:,:,n) + K(:,:,n)'*G + G'*K(:,:,n);
         Sv(:,n)     = Qv + A'*Sv(:,n+1) + K(:,:,n)'*H*duff(:,:,n) + K(:,:,n)'*g + G'*duff(:,:,n);
-        s(n)        = q + s(n+1) + 0.5*duff_transp*H*duff(:,:,n) + duff_transp*g;% q + s(n+1) + 0.5*duff(:,:,n)'*H*duff(:,:,n) + duff'*g;
+        s(n)        = q + s(n+1) + 0.5*duff_transp*H*duff(:,:,n) + duff_transp*g;
+        %s(n)       = q + s(n+1) + 0.5*duff(:,:,n)'*H*duff(:,:,n) + duff'*g;
         
     end % of backward pass for solving Riccati equation
     
@@ -198,8 +178,16 @@ function theta = Update_Controller(X0,U0,dUff,K)
 %  U1 = theta' * [1,x']   
 
 % feedforward control input theta_ff = U0 + dUff - K*X0
-% theta_ff = ...
-theta_ff = U0 + dUff - K*X0;
+theta_ff = reshape(U0, 1, size(U0,1), size(U0,2)) +...
+           reshape(dUff, size(dUff, 2), size(dUff, 1), size(dUff, 3));
+
+theta_ff_K_X0 = zeros(size(theta_ff));
+       
+for k = 1:size(K,3)
+    theta_ff_K_X0(:,:,k) = - ( K(:,:,k)*X0(:,k) )';
+end
+
+theta_ff = theta_ff + theta_ff_K_X0;
 
 % feedback gain of control input
 theta_fb = permute(K,[2 1 3]);      
