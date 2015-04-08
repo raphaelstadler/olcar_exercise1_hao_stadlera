@@ -18,8 +18,8 @@ load('Quadrotor_Model.mat','Model'); % save as structure "Model"
 Task.cost = Cost_Design( Model.param.mQ, Task );
 
 %% Problem 1: Initial controller design 
-[Initial_Controller, Cost_LQR] = LQR_Design_Solution(Model, Task);
-% [Initial_Controller, Cost_LQR] = LQR_Design(Model, Task);
+% [Initial_Controller, Cost_LQR] = LQR_Design_Solution(Model, Task);
+[Initial_Controller, Cost_LQR] = LQR_Design(Model, Task);
 
 % Visualization of LQR controller
 sim_out_lqr = Quad_Simulator(Model,Task,Initial_Controller);

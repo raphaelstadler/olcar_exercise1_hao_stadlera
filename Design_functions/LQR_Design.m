@@ -60,10 +60,12 @@ switch lqr_type
         
         x_ref = Task.goal_x;   % reference point the controller tries to reach
         
-        uff = zeros(4,1);     % uff = duff; No feedforward control for LQR, same dimensions as u
+        uff = Task.cost.u_eq;     % duff = uff - u_lin; Since duff = 0, uff = u_lin; same dimensions as u
         % Feedback control integrated in theta (see below): u_fb = K * (x - x_ref)
+        % The controller works properly when I use u_fb = K*(x_ref - x).
+        % Why?
         % Calculate theta
-        theta = [uff - K*x_ref, K]'; % 13 x 4
+        theta = [uff + K*x_ref, -K]'; % 13 x 4
         
         % stack constant theta matrices for every time step Nt
         LQR_Controller.theta = repmat(theta,[1,1,Nt]);
@@ -74,18 +76,17 @@ switch lqr_type
         
         t1 = Task.vp_time;
         p1 = Task.vp1; % steer towards this input until t1
-        uff = zeros(4,1);     % uff = duff; No feedforward control for LQR, same dimensions as u
+        uff = Task.cost.u_eq;     % duff = uff - u_lin; Since duff = 0, uff = u_lin; same dimensions as u
         
         for t=1:Nt-1
-           
-           if(t <= t1) % steer towards via point p1
+           if t <= t1/Task.dt % steer towards via point p1
                temp_goal = p1;
            else        % steer towareds final point x_ref
                temp_goal = Task.goal_x;   % reference point the controller tries to reach
            end
            
            % Calculate theta similar as before, by using temp_goal instead of x_ref:
-           theta = [uff - K*temp_goal, K]'; % 13 x 4
+           theta = [uff + K*temp_goal, -K]'; % 13 x 4
 
            % varying theta matrices for every time step Nt 
            LQR_Controller.theta(:,:,t) = theta;
