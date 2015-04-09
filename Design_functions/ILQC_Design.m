@@ -102,17 +102,15 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     % "Backward pass": Calculate the coefficients (s,Sv,Sm) for the value 
     % functions at earlier times by proceeding backwards in time (DP-approach)
     for n = (length(T0)-1):-1:1
-        
         % state of system at time step n
         x0 = X0(:,n);
         u0 = U0(:,n);
         
         % Discretize and linearize continuous system dynamics Alin around
-        % specific pair (xO,uO). See exercise sheet Eq.(4) for details
-        
+        % specific pair (xO,uO). See exercise sheet Eq.(4) for details 
         % x_(n+1) = (I + A_lin*dt)*x_n + (B_lin*dt)*u_n
-        A = Model_Alin(x0, u0, Model_Param);
-        B = Model_Blin(x0, u0, Model_Param);
+        A = eye(size(X0, 1), size(X0, 1)) + Model_Alin(x0, u0, Model_Param)*Task.dt;
+        B = Model_Blin(x0, u0, Model_Param)*Task.dt;
         
         % 2nd order approximation of cost function at time step n (Eq.(1.78))
         q   = q_fun(n,x0,u0);       % L_n(x_n,u_n)
@@ -131,11 +129,9 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         H = (H+H')/2; % important, do not delete!
              
         % the optimal change of the input trajectory du = duff + K*dx (Eq.(1.82)) 
-        duff(:,:,n) = -H\g; % TODO: Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND = 2.326746e-163
-        K(:,:,n)    = -H\G; % TODO: Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND = 2.326746e-163
+        duff(:,:,n) = -H\g;
+        K(:,:,n)    = -H\G;
         
-        %fprintf('Timestep: %6.4f \n', n); for debugging
-
         % Redefine du feed-forward control variable for easier accessing
         du_ff = duff(:,:,n);
         
@@ -179,8 +175,9 @@ function theta = Update_Controller(X0,U0,dUff,K)
 %  U1 = theta' * [1,x']   
 
 % feedforward control input theta_ff = U0 + dUff - K*X0
-theta_ff = reshape(U0, 1, size(U0,1), size(U0,2)) +...
-           reshape(dUff, size(dUff, 2), size(dUff, 1), size(dUff, 3));
+% theta_ff size: 1 * n_u * n_t (in our example: 1 x 4 x 500)
+theta_ff = reshape(U0, 1, size(U0,1), size(U0,2)) + ... % U0
+           permute(dUff, [2 1 3]);                      % + dUff
 
 theta_ff_K_X0 = zeros(size(theta_ff));
        
@@ -188,13 +185,13 @@ for k = 1:size(K,3)
     theta_ff_K_X0(:,:,k) = - ( K(:,:,k)*X0(:,k) )';
 end
 
-theta_ff = theta_ff + theta_ff_K_X0;
+theta_ff = theta_ff + theta_ff_K_X0;                    % - K*X0
 
 % feedback gain of control input
 theta_fb = permute(K,[2 1 3]);      
 
 % puts below (adds matrices along first(=row) dimension)
-theta = [theta_ff;        % size: (n_x+1) * n_u * n_t-1
+theta = [theta_ff;        % size: (n_x+1) * n_u * n_t-1 (in our example: 13 x 4 x 500)
          theta_fb];  
 
 end
