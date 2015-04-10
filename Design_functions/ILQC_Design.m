@@ -41,7 +41,6 @@ Qvf_fun = matlabFunction( h_x,'vars',{Task.cost.x});
 h_xx = jacobian(h_x,Task.cost.x);
 Qmf_fun = matlabFunction(h_xx,'vars',{Task.cost.x});
 
-
 n_x = length(Task.cost.x); % dimension of state space
 n_u = length(Task.cost.u); % dimension of control input
 n_t  = (Task.goal_time-Task.start_time)/Task.dt + 1; % number of time steps
@@ -85,15 +84,15 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     end
     
     % define nominal state and control input trajectories
-    X0 = sim_out.x;
+    X0 = sim_out.x(:,1:end-1);
     U0 = sim_out.u;
-    T0 = sim_out.t;
+    T0 = sim_out.t(:,1:end-1);
 
       
     %% Problem 2.1.2: Solve Riccati-like equations backwards in time
     % Initialize the value function elements starting at final time step 
     % (Eq.(1.87)
-    xf = X0(:,end); % final state when using current controller   
+    xf = sim_out.x(:,end); % final state when using current controller   
 
     Sm(:,:,n_t) = Qmf_fun(xf);
     Sv(:,n_t)   = Qvf_fun(xf);
@@ -101,7 +100,7 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     
     % "Backward pass": Calculate the coefficients (s,Sv,Sm) for the value 
     % functions at earlier times by proceeding backwards in time (DP-approach)
-    for n = (length(T0)-1):-1:1
+    for n = (length(sim_out.t)-1):-1:1
         % state of system at time step n
         x0 = X0(:,n);
         u0 = U0(:,n);
@@ -109,12 +108,12 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         % Discretize and linearize continuous system dynamics Alin around
         % specific pair (xO,uO). See exercise sheet Eq.(4) for details 
         % x_(n+1) = (I + A_lin*dt)*x_n + (B_lin*dt)*u_n
-        A = eye(size(X0, 1), size(X0, 1)) + Model_Alin(x0, u0, Model_Param)*Task.dt;
+        A = eye(size(X0, 1)) + Model_Alin(x0, u0, Model_Param)*Task.dt;
         B = Model_Blin(x0, u0, Model_Param)*Task.dt;
         
-        % 2nd order approximation of cost function at time step n (Eq.(1.78))
-        q   = q_fun(n,x0,u0);       % L_n(x_n,u_n)
-        Qv  = Qv_fun(n, x0,u0);     % dL_n/dx
+        % 2nd order LOCAL approximation of cost function at time step n (Eq.(1.78))
+        q   = q_fun( n, x0, u0);    % L_n(x_n,u_n)
+        Qv  = Qv_fun(n, x0, u0);    % dL_n/dx
         Qm  = Qm_fun(n, x0, u0);    % d^2L_n/d^2x
         Rv  = Rv_fun(n, x0, u0);    % d_L/du
         Rm  = Rm_fun(n, x0, u0);    % d^2L/d^2u
@@ -122,7 +121,7 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         
         % control dependent terms of cost function (Eq.(1.81))       
         g =  Rv + B'*Sv(:,n+1);      % linear control dependent:      g_n = r_n + B_n'*s_(n+1)
-        G =  Pm + B'*Sm(:,:,n+1);    % control and state dependent:   G_n = P_n + B_n'S_(n+1)
+        G =  Pm + B'*Sm(:,:,n+1)*A;  % control and state dependent:   G_n = P_n + B_n'*S_(n+1)*A_n
         H =  Rm + B'*Sm(:,:,n+1)*B;  % quadratic control dependent:   H_n = R_n + B_n'*S_(n+1)*B_n
         
         % ensuring H remains symmetric
@@ -132,12 +131,13 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
         duff(:,:,n) = -H\g;
         K(:,:,n)    = -H\G;
         
-        % Redefine du feed-forward control variable for easier accessing
+        % Redefine du feed-forward control and gain variable K for easier accessing
         du_ff = duff(:,:,n);
+        K_gain = K(:,:,n);
         
         % Solve Riccati-like equations for current time step n (Eq.(1.84)
-        Sm(:,:,n)   = Qm + A'*Sm(:,:,n+1)*A + K(:,:,n)'*H*K(:,:,n) + K(:,:,n)'*G + G'*K(:,:,n);
-        Sv(:,n)     = Qv + A'*Sv(:,n+1) + K(:,:,n)'*H*du_ff + K(:,:,n)'*g + G'*du_ff;
+        Sm(:,:,n)   = Qm + A'*Sm(:,:,n+1)*A + K_gain'*H*K_gain + K_gain'*G + G'*K_gain;
+        Sv(:,n)     = Qv + A'*Sv(:,n+1) + K_gain'*H*du_ff + K_gain'*g + G'*du_ff;
         s(n)        = q + s(n+1) + 0.5*du_ff'*H*du_ff + du_ff'*g;
         
     end % of backward pass for solving Riccati equation
@@ -169,7 +169,7 @@ function theta = Update_Controller(X0,U0,dUff,K)
 %  The updated control policy has the following form:
 %  U1 = U0 + dUff + K(X - X0)
 %     = U0 + dUff - K*X0 + K*X
-%     =      Uff         + K*x
+%     =      Uff         + K*X
 %  
 %  This must be brought into the form 
 %  U1 = theta' * [1,x']   
