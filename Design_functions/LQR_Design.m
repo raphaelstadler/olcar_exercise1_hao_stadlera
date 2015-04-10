@@ -33,8 +33,6 @@ K = lqr(A_lin,...           % A
         Task.cost.Q_lqr,... % Q
         Task.cost.R_lqr);   % R; Note: N is supposed to be zero if not mentioned implicitely
 
-% TODO: How to integrate terminal cost ??
-
 %% Design the actual controller using the optimal feedback gains K
 % The goal of this task is to correctly fill the matrix theta.
 LQR_Controller.BaseFnc = @Augment_Base;
@@ -61,9 +59,8 @@ switch lqr_type
         x_ref = Task.goal_x;   % reference point the controller tries to reach
         
         uff = Task.cost.u_eq;     % duff = uff - u_lin; Since duff = 0, uff = u_lin; same dimensions as u
-        % Feedback control integrated in theta (see below): u_fb = K * (x - x_ref)
-        % The controller works properly when I use u_fb = K*(x_ref - x).
-        % Why?
+        % Feedback control integrated in theta (see below): 
+        % u_fb = - K * (x - x_ref) = K * (x_ref - x)
         % Calculate theta
         theta = [uff + K*x_ref, -K]'; % 13 x 4
         
@@ -79,9 +76,9 @@ switch lqr_type
         uff = Task.cost.u_eq;     % duff = uff - u_lin; Since duff = 0, uff = u_lin; same dimensions as u
         
         for t=1:Nt-1
-           if t <= t1/Task.dt % steer towards via point p1
+           if t <= t1/Task.dt   % steer towards via point
                temp_goal = p1;
-           else        % steer towareds final point x_ref
+           else                 % steer towareds final goal point
                temp_goal = Task.goal_x;   % reference point the controller tries to reach
            end
            
