@@ -24,9 +24,9 @@ Cost = struct;
 % LQR controller
 % Q needs to be symmetric and positive semi definite
 Cost.Q_lqr = diag([  1   1    1   ...   % penalize positions
-                     3   3    3   ...   % penalize orientations
-                     0.1  0.1    2   ...   % penalize linear velocities
-                     1   1    1 ]);     % penalize angular velocities         
+                       3   3    3   ...   % penalize orientations
+                       0.1  0.1    2   ...   % penalize linear velocities
+                       1   1    1 ]);     % penalize angular velocities         
 % R needs to be positive definite
 Cost.R_lqr = 10*diag([1 1 1 1]);        % penalize control inputs
 
@@ -65,8 +65,8 @@ switch ilqc_type
         % determine optimal values?
         
         % Q_vp is defined as a symmetric, diagonal matrix
-        Q_vp = diag([ 5   5    5   ...   % penalize positions
-                      3   3    3   ...   % penalize orientations
+        Q_vp = diag([ 3   3    3   ...   % penalize positions
+                      1   1    1   ...   % penalize orientations
                       0   0    0   ...   % DO NOT penalize linear velocities (such that iLQC can determine optimal velocities)
                       0   0    0 ]);     % DO NOT penalize angular velocities  
 
