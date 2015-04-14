@@ -84,15 +84,15 @@ while ( i <= Task.max_iteration && ( norm(squeeze(duff)) > 0.01 || i == 1 ))
     end
     
     % define nominal state and control input trajectories
-    X0 = sim_out.x(:,1:end-1);
+    X0 = sim_out.x;
     U0 = sim_out.u;
-    T0 = sim_out.t(:,1:end-1);
+    T0 = sim_out.t;
 
       
     %% Problem 2.1.2: Solve Riccati-like equations backwards in time
     % Initialize the value function elements starting at final time step 
     % (Eq.(1.87)
-    xf = sim_out.x(:,end); % final state when using current controller   
+    xf = X0(:,end); % final state when using current controller   
 
     Sm(:,:,n_t) = Qmf_fun(xf);
     Sv(:,n_t)   = Qvf_fun(xf);

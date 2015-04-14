@@ -46,8 +46,8 @@ x = x_sym;
 u = u_sym;
 x_goal = Task.goal_x;
 
-ilqc_type = 'goal_state'; % Choose 'goal_state or 'via_point'
-%ilqc_type = 'via_point';
+%ilqc_type = 'goal_state'; % Choose 'goal_state or 'via_point'
+ilqc_type = 'via_point';
 fprintf('ILQC cost function type: %s \n', ilqc_type);
 switch ilqc_type
     case 'goal_state'     
@@ -57,7 +57,7 @@ switch ilqc_type
                            (u-Cost.u_eq)'*Cost.Rm*(u-Cost.u_eq) );
     case 'via_point'
         %% Problem 2.2: Include a waypoint p1 in the ILQC cost function formulation
-        p1 = Task.vp1;      % p1 = Task.vp2 also try this one
+        p1 = Task.vp2;      % p1 = Task.vp2 also try this one
         t1 = Task.vp_time;
         
         % Define an approriate weighting for way points (see script or Eq.(5))
@@ -65,21 +65,21 @@ switch ilqc_type
         % determine optimal values?
         
         % Q_vp is defined as a symmetric, diagonal matrix
-        Q_vp = diag([5   5    5   ...   % penalize positions
-                     3   3    3   ...   % penalize orientations
-                     0   0    0   ...   % DO NOT penalize linear velocities (such that iLQC can determine optimal velocities)
-                     0   0    0 ]);     % DO NOT penalize angular velocities  
- 
+        Q_vp = diag([ 5   5    5   ...   % penalize positions
+                      3   3    3   ...   % penalize orientations
+                      0   0    0   ...   % DO NOT penalize linear velocities (such that iLQC can determine optimal velocities)
+                      0   0    0 ]);     % DO NOT penalize angular velocities  
+
         % don't penalize position deviations, drive system with final cost
         Cost.Qm(1:3,1:3) = zeros(3); 
-               
+              
         % Define symbolic cost function. Use fnct "viapoint(.)" below
         Cost.h = simplify((x-x_goal)'*Cost.Qmf*(x-x_goal));
         Cost.l = simplify( ...
                            (x-Cost.x_eq)'*Cost.Qm*(x-Cost.x_eq) + ...
                            (u-Cost.u_eq)'*Cost.Rm*(u-Cost.u_eq) + ...
-                            viapoint(t1, p1, x, t_sym, Q_vp) ); % function call: viapoint(vp_t,vp,x,t,Qm_vp));  
-            
+                            viapoint(t1, p1, x, t_sym*Task.dt, Q_vp) ); % function call: viapoint(vp_t,vp,x,t,Qm_vp)); Convert time t from timesteps to seconds
+    
       otherwise
         error('Unknown ilqc cost function mode');
         

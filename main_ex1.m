@@ -18,7 +18,7 @@ load('Quadrotor_Model.mat','Model'); % save as structure "Model"
 Task.cost = Cost_Design( Model.param.mQ, Task );
 
 %% Problem 1: Initial controller design 
-% [Initial_Controller, Cost_LQR] = LQR_Design_Solution(Model, Task);
+%[Initial_Controller, Cost_LQR] = LQR_Design_Solution(Model, Task);
 [Initial_Controller, Cost_LQR] = LQR_Design(Model, Task);
 
 % Visualization of LQR controller
@@ -38,6 +38,7 @@ Visualize(sim_out_lqr,Model.param,'plot_mode',1);
 %% Problem 2: ILQC controller design 
 t_cpu = cputime; 
 [ILQC_Controller, Cost] = ILQC_Design(Model,Task,Initial_Controller,@Quad_Simulator);
+%[ILQC_Controller, Cost] = ILQC_Design_Solution(Model,Task,Initial_Controller,@Quad_Simulator);
 t_cpu = cputime - t_cpu;
 
 % Visualization of ILQC controller
