@@ -1,5 +1,7 @@
 %% OLCAR - Exercise 1 - ILQC
 close all; clearvars; clc;
+
+global ONLY_LQR;
        
 addpath(genpath(pwd)); % adds folders and subfolders to path
 % To generate plots of LQR/ILQG rollout
@@ -32,7 +34,13 @@ Visualize(sim_out_lqr,Model.param,'plot_mode',1);
 
 
 %% comment out to proceed to Problem 2
-%return;
+if ~isempty(ONLY_LQR)
+    if ONLY_LQR
+        return;
+    end
+else
+    %return;
+end;
 
 
 %% Problem 2: ILQC controller design 

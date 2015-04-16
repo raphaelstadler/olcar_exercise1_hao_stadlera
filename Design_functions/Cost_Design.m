@@ -7,6 +7,9 @@ function Cost = Cost_Design( m_quad, Task)
 %   .h - continuous time terminal cost
 %   .l - continous time intermediate cost
 
+global ILQC_TYPE;
+global ONLY_LQR;
+
 % Quadcopter system state x
 syms qxQ qyQ qzQ qph qth qps dqxQ dqyQ dqzQ dqph dqth dqps real
 x_sym = [ qxQ qyQ qzQ ...    % position x,y,z
@@ -48,7 +51,15 @@ x_goal = Task.goal_x;
 
 %ilqc_type = 'goal_state'; % Choose 'goal_state or 'via_point'
 ilqc_type = 'via_point';
-fprintf('ILQC cost function type: %s \n', ilqc_type);
+
+if ~isempty(ILQC_TYPE)
+    ilqc_type = ILQC_TYPE;
+end
+if (isempty(ONLY_LQR) || ...
+   (ONLY_LQR == false) )
+    fprintf('ILQC cost function type: %s \n', ilqc_type);
+end
+
 switch ilqc_type
     case 'goal_state'     
         Cost.h = simplify((x-x_goal)'*Cost.Qmf*(x-x_goal));
@@ -57,7 +68,7 @@ switch ilqc_type
                            (u-Cost.u_eq)'*Cost.Rm*(u-Cost.u_eq) );
     case 'via_point'
         %% Problem 2.2: Include a waypoint p1 in the ILQC cost function formulation
-        p1 = Task.vp2;      % p1 = Task.vp2 also try this one
+        p1 = Task.vp1;      % p1 = Task.vp2 also try this one
         t1 = Task.vp_time;
         
         % Define an approriate weighting for way points (see script or Eq.(5))

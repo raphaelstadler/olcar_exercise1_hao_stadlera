@@ -6,6 +6,7 @@ function [LQR_Controller, Cost] = LQR_Design(Model,Task)
 %                       control input)
 %             .BaseFnc
 %             .time
+global LQR_TYPE;
 
 %% Problem 1.1: Find optimal feedback gains according to an LQR controller
 % Make use of the elements in Task.cost for linearization points and cost
@@ -47,6 +48,10 @@ LQR_Controller.time    = Task.start_time:Task.dt:(Task.goal_time-Task.dt);
 
 %lqr_type = 'goal_state';  % Choose 'goal_state or 'via_point'
 lqr_type = 'via_point';  % Choose 'goal_state or 'via_point'
+
+if ~isempty(LQR_TYPE)
+    lqr_type = LQR_TYPE;
+end
 
 fprintf('LQR controller design type: %s \n', lqr_type);
 Nt = ceil((Task.goal_time - Task.start_time)/Task.dt+1);   
