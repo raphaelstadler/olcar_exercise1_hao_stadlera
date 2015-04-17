@@ -9,6 +9,7 @@ function Cost = Cost_Design( m_quad, Task)
 
 global ILQC_TYPE;
 global ONLY_LQR;
+global ILQC_VIAPOINT_2;
 
 % Quadcopter system state x
 syms qxQ qyQ qzQ qph qth qps dqxQ dqyQ dqzQ dqph dqth dqps real
@@ -68,7 +69,11 @@ switch ilqc_type
                            (u-Cost.u_eq)'*Cost.Rm*(u-Cost.u_eq) );
     case 'via_point'
         %% Problem 2.2: Include a waypoint p1 in the ILQC cost function formulation
+        if ~isempty(ILQC_VIAPOINT_2) && ILQC_VIAPOINT_2 == true        
+        p1 = Task.vp2;      % p1 = Task.vp2 also try this one
+        else
         p1 = Task.vp1;      % p1 = Task.vp2 also try this one
+        end
         t1 = Task.vp_time;
         
         % Define an approriate weighting for way points (see script or Eq.(5))
