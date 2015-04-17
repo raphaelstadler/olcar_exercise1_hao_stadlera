@@ -27,7 +27,7 @@ Cost = struct;
 %% LQR cost function
 % LQR controller
 % Q needs to be symmetric and positive semi definite
-Cost.Q_lqr = diag([  1   1    1   ...   % penalize positions
+Cost.Q_lqr = 5*diag([  1   1    1   ...   % penalize positions
                        3   3    3   ...   % penalize orientations
                        0.1  0.1    2   ...   % penalize linear velocities
                        1   1    1 ]);     % penalize angular velocities         
